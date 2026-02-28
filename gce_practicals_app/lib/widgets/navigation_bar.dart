@@ -37,9 +37,9 @@ class _CustomNavBarState extends State<CustomNavBar>
       label: 'Papers',
     ),
     _NavItem(
-      icon: Icons.person_rounded,
-      outlinedIcon: Icons.person_outline_rounded,
-      label: 'Profile',
+      icon: Icons.settings_rounded,
+      outlinedIcon: Icons.settings_outlined,
+      label: 'Settings',
     ),
   ];
 

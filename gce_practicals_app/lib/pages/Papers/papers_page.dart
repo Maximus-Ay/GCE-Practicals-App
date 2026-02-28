@@ -110,7 +110,7 @@ class _PapersPageState extends State<PapersPage> {
   Color get _accentColor =>
       _isDark ? AppColors.darkAccent : AppColors.lightAccent;
   Color get _searchBarColor => _isDark
-      ? AppColors.darkCard.withValues(alpha: 0.85)
+      ? const Color.fromARGB(255, 35, 38, 63).withValues(alpha: 0.85)
       : Colors.white.withValues(alpha: 0.75);
   Color get _searchBarBorder => _isDark
       ? AppColors.darkCardBorder.withValues(alpha: 0.8)
@@ -324,8 +324,8 @@ class _PapersPageState extends State<PapersPage> {
         height: 53,
         decoration: BoxDecoration(
           color: _searchBarColor,
-          borderRadius: BorderRadius.circular(36),
-          border: Border.all(color: _searchBarBorder, width: 1.2),
+          borderRadius: BorderRadius.circular(60),
+          border: Border.all(color: _searchBarBorder, width: 0.4),
           boxShadow: [
             BoxShadow(
               color: _accentColor.withValues(alpha: 0.07),

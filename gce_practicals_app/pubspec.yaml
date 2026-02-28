@@ -63,6 +63,14 @@ flutter:
     - assets/images/Biology.png
     - assets/images/Chemistry.png
     - assets/images/Physics.png
+    - assets/images/instagram.png
+    - assets/images/communication.png
+    - assets/images/tik-tok.png
+    - assets/images/linkedin.png
+    - assets/images/youtube.png
+    - assets/images/whatsapp.png
+    - assets/images/fire.png
+    
 
   fonts:
   - family: GoogleSansFlex

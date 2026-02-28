@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gce_practicals_app/pages/Profile/streak_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+
+// Import streak page
+// import 'streak_page.dart';
 
 // ── Theme notifier with SharedPreferences persistence ─────────────────────────
-// Place this in a shared file (e.g. theme_notifier.dart) in your real app.
 class ThemeNotifier extends ValueNotifier<ThemeMode> {
   ThemeNotifier() : super(ThemeMode.light) {
     _loadTheme();
   }
-
   static const _key = 'app_theme_dark';
-
   Future<void> _loadTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final isDark = prefs.getBool(_key) ?? false;
@@ -26,12 +29,10 @@ class ThemeNotifier extends ValueNotifier<ThemeMode> {
   }
 }
 
-// Global singleton — wire into your MaterialApp (see comment at bottom of file)
 final themeNotifier = ThemeNotifier();
 
 // ── Colour tokens ─────────────────────────────────────────────────────────────
 class AppColors {
-  // Light
   static const lightBg1 = Color(0xFFEEF0FF);
   static const lightBg2 = Color(0xFFF8F9FF);
   static const lightBg3 = Color(0xFFE8F4FF);
@@ -43,7 +44,6 @@ class AppColors {
   static const lightIcon = Color(0xFF3949AB);
   static const lightDivider = Color(0xFFE8EAF6);
 
-  // Dark
   static const darkBg1 = Color(0xFF0D0F1E);
   static const darkBg2 = Color(0xFF131629);
   static const darkBg3 = Color(0xFF0A0C18);
@@ -55,10 +55,16 @@ class AppColors {
   static const darkIcon = Color(0xFF738AFF);
   static const darkDivider = Color(0xFF252845);
 
-  // Shared
   static const orange = Color(0xFFFF7043);
   static const coin = Color(0xFFFFB74D);
   static const coinDark = Color(0xFFF57C00);
+}
+
+Future<void> _launchURL(String url) async {
+  final uri = Uri.parse(url);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 }
 
 // ── Profile Page ──────────────────────────────────────────────────────────────
@@ -74,7 +80,6 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _showStickyBar = false;
   static const double _headerTriggerOffset = 20.0;
 
-  // Dummy data
   bool _isSignedIn = false;
   final int _coins = 340;
   final int _streakDays = 4;
@@ -116,7 +121,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   bool get _isDark => themeNotifier.value == ThemeMode.dark;
 
-  // ── Colour helpers ────────────────────────────────────────────────────────
   Color get _bgGrad1 => _isDark ? AppColors.darkBg1 : AppColors.lightBg1;
   Color get _bgGrad2 => _isDark ? AppColors.darkBg2 : AppColors.lightBg2;
   Color get _bgGrad3 => _isDark ? AppColors.darkBg3 : AppColors.lightBg3;
@@ -131,7 +135,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Color get _dividerColor =>
       _isDark ? AppColors.darkDivider : AppColors.lightDivider;
 
-  // ── Responsive helpers ────────────────────────────────────────────────────
   bool _isMediumTablet(double w) => w >= 600 && w < 800;
   bool _isLargeTablet(double w) => w >= 800;
   bool _isTablet(double w) => w >= 600;
@@ -141,7 +144,6 @@ class _ProfilePageState extends State<ProfilePage> {
       ? 24
       : 16;
 
-  // ── Build ─────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
@@ -171,22 +173,17 @@ class _ProfilePageState extends State<ProfilePage> {
                 SliverToBoxAdapter(child: _buildStreakCard(screenWidth)),
                 SliverToBoxAdapter(child: _buildThemeToggle(screenWidth)),
                 SliverToBoxAdapter(
-                  child: _buildSectionTitle('Social Media', screenWidth),
+                  child: _buildSectionTitle('Connect With Us', screenWidth),
                 ),
                 SliverToBoxAdapter(child: _buildSocialSection(screenWidth)),
                 SliverToBoxAdapter(
-                  child: _buildSectionTitle('About & Legal', screenWidth),
+                  child: _buildSectionTitle('Legal & Support', screenWidth),
                 ),
-                SliverToBoxAdapter(child: _buildAboutSection(screenWidth)),
+                SliverToBoxAdapter(child: _buildLegalSection(screenWidth)),
                 SliverToBoxAdapter(child: _buildCopyrightFooter(screenWidth)),
-                // ── Bottom padding ─────────────────────────────────────────
-                // Adjust the value below (currently 24) to change the space
-                // between the copyright text and the bottom nav bar.
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
               ],
             ),
-
-            // Sticky bar
             AnimatedPositioned(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOutCubic,
@@ -205,7 +202,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ── Header ────────────────────────────────────────────────────────────────
   Widget _buildHeader(
     BuildContext context,
     double topPadding,
@@ -215,70 +211,19 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       padding: EdgeInsets.fromLTRB(hPad, topPadding + 6, hPad, 6),
       color: Colors.transparent,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'Profile',
-            style: TextStyle(
-              fontSize: _isLargeTablet(screenWidth) ? 32 : 26,
-              fontWeight: FontWeight.w700,
-              color: _titleColor,
-              fontFamily: 'GoogleSansFlex',
-              letterSpacing: -0.5,
-            ),
-          ),
-          // Coins badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.coin.withValues(alpha: _isDark ? 0.15 : 0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.coin.withValues(alpha: 0.3),
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 22,
-                  height: 22,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.15),
-                  ),
-                  child: ClipOval(
-                    child: Image.asset(
-                      'assets/images/coin.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.monetization_on_rounded,
-                        color: AppColors.coin,
-                        size: 16,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '$_coins',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _isDark ? AppColors.coin : AppColors.coinDark,
-                    fontFamily: 'GoogleSansFlex',
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: Text(
+        'Profile',
+        style: TextStyle(
+          fontSize: _isLargeTablet(screenWidth) ? 32 : 26,
+          fontWeight: FontWeight.w700,
+          color: _titleColor,
+          fontFamily: 'GoogleSansFlex',
+          letterSpacing: -0.5,
+        ),
       ),
     );
   }
 
-  // ── Sticky bar ────────────────────────────────────────────────────────────
   Widget _buildStickyBar(double topPadding) {
     return Container(
       padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 12),
@@ -293,58 +238,19 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Profile',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFFF5F6FF),
-              fontFamily: 'GoogleSansFlex',
-              letterSpacing: -0.4,
-            ),
-          ),
-          Row(
-            children: [
-              Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.15),
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/coin.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.monetization_on_rounded,
-                      color: AppColors.coin,
-                      size: 14,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '$_coins',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  fontFamily: 'GoogleSansFlex',
-                ),
-              ),
-            ],
-          ),
-        ],
+      child: const Text(
+        'Profile',
+        style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFFF5F6FF),
+          fontFamily: 'GoogleSansFlex',
+          letterSpacing: -0.4,
+        ),
       ),
     );
   }
 
-  // ── Profile card ──────────────────────────────────────────────────────────
   Widget _buildProfileCard(double screenWidth) {
     final hPad = _hPad(screenWidth);
     final isTablet = _isTablet(screenWidth);
@@ -510,7 +416,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ── Streak card ───────────────────────────────────────────────────────────
+  // ── Streak card — NOW CLICKABLE → navigates to StreakPage ─────────────────
   Widget _buildStreakCard(double screenWidth) {
     final hPad = _hPad(screenWidth);
     final isTablet = _isTablet(screenWidth);
@@ -529,240 +435,309 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Padding(
       padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 0),
-      child: Container(
-        padding: EdgeInsets.all(isTablet ? 22 : 18),
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
-          border: Border.all(color: _cardBorder, width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.orange.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: isTablet ? 36 : 30,
-                      height: isTablet ? 36 : 30,
-                      decoration: BoxDecoration(
-                        color: AppColors.orange.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.local_fire_department_rounded,
-                        color: AppColors.orange,
-                        size: isTablet ? 20 : 17,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Streak',
-                      style: TextStyle(
-                        fontSize: isTablet ? 17 : 15,
-                        fontWeight: FontWeight.w700,
-                        color: _titleColor,
-                        fontFamily: 'GoogleSansFlex',
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 5,
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  StreakPage(
+                    streakDays: _streakDays,
+                    coins: _coins,
+                    weekStreak: _weekStreak,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppColors.orange.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    '$_streakDays day${_streakDays == 1 ? '' : 's'} 🔥',
-                    style: TextStyle(
-                      fontSize: isTablet ? 13 : 12,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.orange,
-                      fontFamily: 'GoogleSansFlex',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(7, (i) {
-                final done = _weekStreak[i];
-                return Column(
-                  children: [
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      width: dotSize,
-                      height: dotSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: done
-                            ? AppColors.orange
-                            : _isDark
-                            ? AppColors.darkCardBorder
-                            : const Color(0xFFF0F0F0),
-                        boxShadow: done
-                            ? [
-                                BoxShadow(
-                                  color: AppColors.orange.withValues(
-                                    alpha: 0.35,
-                                  ),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                            : null,
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutCubic,
                       ),
-                      child: done
-                          ? Icon(
-                              Icons.check_rounded,
-                              color: Colors.white,
-                              size: dotSize * 0.48,
-                            )
-                          : null,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      _weekDays[i],
-                      style: TextStyle(
-                        fontSize: dotFontSize,
-                        fontWeight: FontWeight.w600,
-                        color: done ? AppColors.orange : _subtitleColor,
-                        fontFamily: 'GoogleSansFlex',
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 0.96, end: 1.0).animate(
+                          CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ),
+                        ),
+                        child: child,
                       ),
-                    ),
-                  ],
-                );
-              }),
+                    );
+                  },
+              transitionDuration: const Duration(milliseconds: 320),
+              reverseTransitionDuration: const Duration(milliseconds: 280),
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: EdgeInsets.all(isTablet ? 14 : 12),
-              decoration: BoxDecoration(
-                color: AppColors.coin.withValues(alpha: _isDark ? 0.08 : 0.06),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppColors.coin.withValues(alpha: 0.2),
-                  width: 1,
-                ),
+          );
+        },
+        child: Container(
+          padding: EdgeInsets.all(isTablet ? 22 : 18),
+          decoration: BoxDecoration(
+            color: _cardColor,
+            borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
+            border: Border.all(color: _cardBorder, width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.orange.withValues(alpha: 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 6),
               ),
-              child: Row(
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: isTablet ? 32 : 26,
-                    height: isTablet ? 32 : 26,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.coin.withValues(alpha: 0.15),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/images/coin.png',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
-                          Icons.monetization_on_rounded,
-                          color: AppColors.coin,
-                          size: isTablet ? 18 : 15,
+                  Row(
+                    children: [
+                      // Fire asset icon replacing the plain Flutter icon
+                      Container(
+                        width: isTablet ? 36 : 30,
+                        height: isTablet ? 36 : 30,
+                        decoration: BoxDecoration(
+                          color: AppColors.orange.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(5),
+                        child: Image.asset(
+                          'assets/images/fire.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.local_fire_department_rounded,
+                            color: AppColors.orange,
+                            size: isTablet ? 20 : 17,
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Streak',
+                        style: TextStyle(
+                          fontSize: isTablet ? 17 : 15,
+                          fontWeight: FontWeight.w700,
+                          color: _titleColor,
+                          fontFamily: 'GoogleSansFlex',
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total Coins',
-                          style: TextStyle(
-                            fontSize: isTablet ? 12 : 11,
-                            color: _subtitleColor,
-                            fontFamily: 'GoogleSansFlex',
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.orange.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: AppColors.orange.withValues(alpha: 0.25),
+                            width: 1,
                           ),
                         ),
-                        Text(
-                          '$_coins coins',
+                        child: Text(
+                          '$_streakDays day${_streakDays == 1 ? '' : 's'} 🔥',
                           style: TextStyle(
-                            fontSize: isTablet ? 16 : 14,
+                            fontSize: isTablet ? 13 : 12,
                             fontWeight: FontWeight.w700,
-                            color: _isDark
-                                ? AppColors.coin
-                                : AppColors.coinDark,
+                            color: AppColors.orange,
                             fontFamily: 'GoogleSansFlex',
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Chevron hint that it's tappable
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: _subtitleColor,
+                        size: isTablet ? 22 : 20,
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(7, (i) {
+                  final done = _weekStreak[i];
+                  return Column(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: dotSize,
+                        height: dotSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: done
+                              ? AppColors.orange
+                              : _isDark
+                              ? AppColors.darkCardBorder
+                              : const Color(0xFFF0F0F0),
+                          boxShadow: done
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.orange.withValues(
+                                      alpha: 0.35,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: done
+                            ? Padding(
+                                padding: const EdgeInsets.all(5),
+                                child: Image.asset(
+                                  'assets/images/fire.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: dotSize * 0.48,
+                                  ),
+                                ),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        _weekDays[i],
+                        style: TextStyle(
+                          fontSize: dotFontSize,
+                          fontWeight: FontWeight.w600,
+                          color: done ? AppColors.orange : _subtitleColor,
+                          fontFamily: 'GoogleSansFlex',
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: EdgeInsets.all(isTablet ? 14 : 12),
+                decoration: BoxDecoration(
+                  color: AppColors.coin.withValues(
+                    alpha: _isDark ? 0.08 : 0.06,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.coin.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: isTablet ? 32 : 26,
+                      height: isTablet ? 32 : 26,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.coin.withValues(alpha: 0.15),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/coin.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            Icons.monetization_on_rounded,
+                            color: AppColors.coin,
+                            size: isTablet ? 18 : 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Total Coins',
+                            style: TextStyle(
+                              fontSize: isTablet ? 12 : 11,
+                              color: _subtitleColor,
+                              fontFamily: 'GoogleSansFlex',
+                            ),
+                          ),
+                          Text(
+                            '$_coins coins',
+                            style: TextStyle(
+                              fontSize: isTablet ? 16 : 14,
+                              fontWeight: FontWeight.w700,
+                              color: _isDark
+                                  ? AppColors.coin
+                                  : AppColors.coinDark,
+                              fontFamily: 'GoogleSansFlex',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Small tap hint at the bottom right
+                    Text(
+                      'View details →',
+                      style: TextStyle(
+                        fontSize: isTablet ? 12 : 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.orange.withValues(alpha: 0.8),
+                        fontFamily: 'GoogleSansFlex',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ── Theme toggle ──────────────────────────────────────────────────────────
-  // To adjust toggle + container size: change the values marked with ← below.
   Widget _buildThemeToggle(double screenWidth) {
     final hPad = _hPad(screenWidth);
     final isTablet = _isTablet(screenWidth);
     final isLarge = _isLargeTablet(screenWidth);
 
-    // ── Sizes to tweak ───────────────────────────────────────────────────────
     final double iconBoxSize = isLarge
         ? 48
         : isTablet
         ? 44
-        : 40; // ← icon box
+        : 40;
     final double iconSize = isLarge
         ? 26
         : isTablet
         ? 22
-        : 20; // ← icon
+        : 20;
     final double titleSize = isLarge
         ? 20
         : isTablet
         ? 18
-        : 16; // ← title text
+        : 16;
     final double subtitleSize = isLarge
         ? 15
         : isTablet
         ? 13
-        : 12; // ← subtitle text
+        : 12;
     final double pillW = isLarge
         ? 70
         : isTablet
         ? 62
-        : 56; // ← toggle pill width
+        : 56;
     final double pillH = isLarge
         ? 38
         : isTablet
         ? 34
-        : 30; // ← toggle pill height
-    final double thumbSize = pillH - 8; // ← thumb circle
-    final double vPad = isTablet ? 20 : 18; // ← card vertical padding
-    final double hPadCard = isTablet ? 22 : 18; // ← card horizontal padding
+        : 30;
+    final double thumbSize = pillH - 8;
+    final double vPad = isTablet ? 20 : 18;
+    final double hPadCard = isTablet ? 22 : 18;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(hPad, 16, hPad, 0),
@@ -826,10 +801,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
-            // Toggle pill
             GestureDetector(
               onTap: () {
-                HapticFeedback.lightImpact(); // ← haptic feedback on toggle
+                HapticFeedback.lightImpact();
                 themeNotifier.toggle();
               },
               child: AnimatedContainer(
@@ -879,7 +853,6 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ── Section title ─────────────────────────────────────────────────────────
   Widget _buildSectionTitle(String title, double screenWidth) {
     final hPad = _hPad(screenWidth);
     final isTablet = _isTablet(screenWidth);
@@ -898,79 +871,185 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ── Social media section ──────────────────────────────────────────────────
   Widget _buildSocialSection(double screenWidth) {
+    final hPad = _hPad(screenWidth);
+    final isTablet = _isTablet(screenWidth);
+
     final socials = [
       {
         'label': 'WhatsApp',
-        'icon': Icons.chat_rounded,
+        'asset': 'assets/images/whatsapp.png',
         'color': const Color(0xFF25D366),
+        'url': 'https://chat.whatsapp.com/GAtUxmikpvjEjGV47yyURp?mode=wwt',
       },
       {
         'label': 'Instagram',
-        'icon': Icons.camera_alt_rounded,
+        'asset': 'assets/images/instagram.png',
         'color': const Color(0xFFE1306C),
+        'url': 'https://www.instagram.com/smartwaygceapp',
       },
       {
         'label': 'YouTube',
-        'icon': Icons.play_circle_rounded,
+        'asset': 'assets/images/youtube.png',
         'color': const Color(0xFFFF0000),
+        'url': 'https://youtu.be/AazLN3k4j80?si=SY-Ay5uOECwN3vZr',
       },
       {
         'label': 'Facebook',
-        'icon': Icons.facebook_rounded,
+        'asset': 'assets/images/communication.png',
         'color': const Color(0xFF1877F2),
+        'url': 'https://www.facebook.com/profile.php?id=61583217234255',
       },
       {
         'label': 'TikTok',
-        'icon': Icons.music_note_rounded,
+        'asset': 'assets/images/tik-tok.png',
         'color': const Color(0xFF010101),
+        'url': 'https://www.tiktok.com/@smartwaygceapp',
       },
       {
         'label': 'LinkedIn',
-        'icon': Icons.work_rounded,
+        'asset': 'assets/images/linkedin.png',
         'color': const Color(0xFF0A66C2),
+        'url': 'https://www.linkedin.com/company/smart-way-gce-prep-app/',
+      },
+      {
+        'label': 'Website',
+        'asset': null,
+        'icon': Icons.language_rounded,
+        'color': const Color(0xFF3949AB),
+        'url': 'https://www.smartwaygceapp.com',
       },
     ];
-    return _buildListCard(
-      socials
-          .map(
-            (s) => _ListItem(
-              label: s['label'] as String,
-              icon: s['icon'] as IconData,
-              iconColor: s['color'] as Color,
-              onTap: () {},
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: hPad),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(isTablet ? 22 : 18),
+          border: Border.all(color: _cardBorder, width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: _accentColor.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
             ),
-          )
-          .toList(),
-      screenWidth,
+          ],
+        ),
+        child: Column(
+          children: socials.asMap().entries.map((entry) {
+            final i = entry.key;
+            final s = entry.value;
+            final isLast = i == socials.length - 1;
+            final color = s['color'] as Color;
+            final asset = s['asset'] as String?;
+            final icon = s['icon'] as IconData?;
+            final iconSize = isTablet ? 20.0 : 18.0;
+            final boxSize = isTablet ? 36.0 : 32.0;
+
+            return GestureDetector(
+              onTap: () => _launchURL(s['url'] as String),
+              behavior: HitTestBehavior.opaque,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isTablet ? 20 : 16,
+                      vertical: isTablet ? 16 : 14,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: boxSize,
+                          height: boxSize,
+                          decoration: BoxDecoration(
+                            color: color.withValues(
+                              alpha: _isDark ? 0.15 : 0.10,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.all(6),
+                          child: asset != null
+                              ? Image.asset(
+                                  asset,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Icon(
+                                    Icons.link_rounded,
+                                    color: color,
+                                    size: iconSize,
+                                  ),
+                                )
+                              : Icon(
+                                  icon ?? Icons.language_rounded,
+                                  color: color,
+                                  size: iconSize,
+                                ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Text(
+                            s['label'] as String,
+                            style: TextStyle(
+                              fontSize: isTablet ? 15 : 14,
+                              fontWeight: FontWeight.w500,
+                              color: _titleColor,
+                              fontFamily: 'GoogleSansFlex',
+                            ),
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: _subtitleColor,
+                          size: isTablet ? 22 : 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isLast)
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: _dividerColor,
+                      indent: isTablet ? 68 : 62,
+                    ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ),
     );
   }
 
-  // ── About & legal section ─────────────────────────────────────────────────
-  Widget _buildAboutSection(double screenWidth) {
+  Widget _buildLegalSection(double screenWidth) {
     final items = [
       {
         'label': 'Terms of Service',
         'icon': Icons.description_rounded,
         'color': const Color(0xFF3949AB),
+        'url': 'https://www.smartwaygceapp.com',
       },
       {
         'label': 'Privacy Policy',
         'icon': Icons.privacy_tip_rounded,
         'color': const Color(0xFF0288D1),
+        'url': 'https://www.smartwaygceapp.com',
       },
       {
-        'label': 'Legal',
-        'icon': Icons.gavel_rounded,
-        'color': const Color(0xFF5E35B1),
+        'label': 'Share this App',
+        'icon': Icons.share_rounded,
+        'color': const Color(0xFF43A047),
+        'url': 'share',
       },
       {
         'label': 'Rate the App ⭐',
         'icon': Icons.star_rounded,
         'color': const Color(0xFFFFB300),
+        'url':
+            'https://play.google.com/store/apps/details?id=com.smartway.gcepracticals',
       },
     ];
+
     return _buildListCard(
       items
           .map(
@@ -978,7 +1057,17 @@ class _ProfilePageState extends State<ProfilePage> {
               label: s['label'] as String,
               icon: s['icon'] as IconData,
               iconColor: s['color'] as Color,
-              onTap: () {},
+              onTap: () {
+                final url = s['url'] as String;
+                if (url == 'share') {
+                  Share.share(
+                    'Check out GCE Practicals — the best app to prepare for your GCE exams! 🎓\n\nhttps://play.google.com/store/apps/details?id=com.smartway.gcepracticals',
+                    subject: 'GCE Practicals App',
+                  );
+                } else {
+                  _launchURL(url);
+                }
+              },
             ),
           )
           .toList(),
@@ -1074,16 +1163,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ── Copyright footer ──────────────────────────────────────────────────────
   Widget _buildCopyrightFooter(double screenWidth) {
     final hPad = _hPad(screenWidth);
     final isTablet = _isTablet(screenWidth);
     return Padding(
-      padding: EdgeInsets.fromLTRB(hPad, 28, hPad, 0),
+      padding: EdgeInsets.fromLTRB(hPad, 20, hPad, 0),
       child: Column(
         children: [
           Divider(color: _dividerColor, thickness: 1, height: 1),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
           Text(
             'Smart Way GCE Practicals',
             style: TextStyle(
@@ -1094,7 +1182,7 @@ class _ProfilePageState extends State<ProfilePage> {
               letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             '© 2026 Smart Way Inc. All rights reserved.',
             style: TextStyle(
@@ -1112,14 +1200,13 @@ class _ProfilePageState extends State<ProfilePage> {
               fontFamily: 'GoogleSansFlex',
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
         ],
       ),
     );
   }
 }
 
-// ── Helper model ──────────────────────────────────────────────────────────────
 class _ListItem {
   final String label;
   final IconData icon;
