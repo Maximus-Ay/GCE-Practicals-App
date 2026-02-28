@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gce_practicals_app/pages/Home/practicals_page.dart';
+import 'package:gce_practicals_app/pages/Profile/profile_page.dart';
+import 'package:gce_practicals_app/pages/Subjects/Biology/al_biology.dart';
+import 'package:gce_practicals_app/pages/Subjects/Chemistry/al_chemistry.dart';
+import 'package:gce_practicals_app/pages/Subjects/Computer/al_computer_science.dart';
+import 'package:gce_practicals_app/pages/Subjects/ICT/al_ict.dart';
+import 'package:gce_practicals_app/pages/Subjects/Physics/al_physics.dart';
+import 'package:gce_practicals_app/pages/Subjects/csc/ol_computer_science.dart';
+
+// Import your shared themeNotifier and AppColors, e.g.:
+// import 'theme_notifier.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -10,12 +21,11 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey _subjectsSectionKey = GlobalKey();
   bool _showStickyBar = false;
 
-  // Approx height of the header before sticky bar kicks in
   static const double _headerTriggerOffset = 20.0;
 
-  // Subject data
   static const List<Map<String, dynamic>> _subjects = [
     {
       'title': 'OL Computer Science',
@@ -23,6 +33,7 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.computer_rounded,
       'gradient': [Color(0xFF4FC3F7), Color(0xFF0288D1)],
       'tag': 'O Level',
+      'page': 'ol_cs',
     },
     {
       'title': 'AL Computer Science',
@@ -30,6 +41,7 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.developer_board_rounded,
       'gradient': [Color(0xFF7986CB), Color(0xFF3949AB)],
       'tag': 'A Level',
+      'page': 'al_cs',
     },
     {
       'title': 'AL ICT',
@@ -37,6 +49,7 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.lan_rounded,
       'gradient': [Color(0xFF4DB6AC), Color(0xFF00796B)],
       'tag': 'A Level',
+      'page': 'al_ict',
     },
     {
       'title': 'AL Physics',
@@ -44,6 +57,7 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.bolt_rounded,
       'gradient': [Color(0xFFFFB74D), Color(0xFFF57C00)],
       'tag': 'A Level',
+      'page': 'al_physics',
     },
     {
       'title': 'AL Chemistry',
@@ -51,6 +65,7 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.science_rounded,
       'gradient': [Color(0xFFF06292), Color(0xFFC2185B)],
       'tag': 'A Level',
+      'page': 'al_chemistry',
     },
     {
       'title': 'AL Biology',
@@ -58,32 +73,64 @@ class _HomePageState extends State<HomePage> {
       'icon': Icons.eco_rounded,
       'gradient': [Color(0xFF81C784), Color(0xFF388E3C)],
       'tag': 'A Level',
+      'page': 'al_biology',
     },
   ];
 
-  // Quick action chips
   static const List<Map<String, dynamic>> _quickActions = [
-    {'label': 'Notes', 'icon': Icons.menu_book_outlined},
-    {'label': 'Exercises', 'icon': Icons.edit_note_rounded},
-    {'label': 'Practicals', 'icon': Icons.biotech_outlined},
-    {'label': 'Saved', 'icon': Icons.bookmark_outline_rounded},
+    {'label': 'Notes', 'icon': Icons.menu_book_outlined, 'action': 'scroll'},
+    {'label': 'Exercises', 'icon': Icons.edit_note_rounded, 'action': 'scroll'},
+    {
+      'label': 'Practicals',
+      'icon': Icons.biotech_outlined,
+      'action': 'practicals',
+    },
   ];
+
+  // -- Theme helpers ----------------------------------------------------------
+  bool get _isDark => themeNotifier.value == ThemeMode.dark;
+
+  Color get _bgGrad1 => _isDark ? AppColors.darkBg1 : AppColors.lightBg1;
+  Color get _bgGrad2 => _isDark ? AppColors.darkBg2 : AppColors.lightBg2;
+  Color get _bgGrad3 => _isDark ? AppColors.darkBg3 : AppColors.lightBg3;
+  Color get _titleColor => _isDark ? AppColors.darkTitle : AppColors.lightTitle;
+  Color get _subtitleColor =>
+      _isDark ? AppColors.darkSubtitle : AppColors.lightSubtitle;
+  Color get _accentColor =>
+      _isDark ? AppColors.darkAccent : AppColors.lightAccent;
+  Color get _cardColor => _isDark ? AppColors.darkCard : AppColors.lightCard;
+  Color get _cardBorder =>
+      _isDark ? AppColors.darkCardBorder : AppColors.lightCardBorder;
+  Color get _stickyBarBg =>
+      _isDark ? AppColors.darkBg2 : const Color(0xFF1A237E);
+
+  // -- Responsive helpers ----------------------------------------------------
+  bool _isMediumTablet(double w) => w >= 600 && w < 800;
+  bool _isLargeTablet(double w) => w >= 800;
+  bool _isTablet(double w) => w >= 600;
+  double _hPad(double w) => _isLargeTablet(w)
+      ? 32
+      : _isMediumTablet(w)
+      ? 24
+      : 20;
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    themeNotifier.addListener(_onThemeChange);
   }
+
+  void _onThemeChange() => setState(() {});
 
   void _onScroll() {
     final shouldShow = _scrollController.offset > _headerTriggerOffset;
     if (shouldShow != _showStickyBar) {
       setState(() => _showStickyBar = shouldShow);
-      // Update status bar icon brightness to stay readable
       SystemChrome.setSystemUIOverlayStyle(
         SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: shouldShow
+          statusBarIconBrightness: (shouldShow || _isDark)
               ? Brightness.light
               : Brightness.dark,
         ),
@@ -91,84 +138,147 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  void _scrollToSubjects() {
+    final ctx = _subjectsSectionKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
+
+  void _handleQuickAction(BuildContext context, String action) {
+    if (action == 'scroll') {
+      _scrollToSubjects();
+    } else if (action == 'practicals') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PracticalsPage()),
+      );
+    }
+  }
+
+  void _navigateToSubject(BuildContext context, String page) {
+    Widget destination;
+    switch (page) {
+      case 'ol_cs':
+        destination = const OlComputerSciencePage();
+        break;
+      case 'al_cs':
+        destination = const AlComputerSciencePage();
+        break;
+      case 'al_ict':
+        destination = const AlIctPage();
+        break;
+      case 'al_physics':
+        destination = const AlPhysicsPage();
+        break;
+      case 'al_chemistry':
+        destination = const AlChemistryPage();
+        break;
+      case 'al_biology':
+        destination = const AlBiologyPage();
+        break;
+      default:
+        return;
+    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => destination));
+  }
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    themeNotifier.removeListener(_onThemeChange);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // Responsive grid columns: 2 on phone, 3 on tablet
+    final int gridColumns = _isTablet(screenWidth) ? 3 : 2;
+    final double gridAspectRatio = _isLargeTablet(screenWidth)
+        ? 0.95
+        : _isMediumTablet(screenWidth)
+        ? 0.92
+        : 0.90;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEEF0FF), // soft lavender-white top-left
-              Color(0xFFF8F9FF), // near-white centre
-              Color(0xFFE8F4FF), // very light cyan bottom-right
-            ],
-            stops: [0.0, 0.5, 1.0],
+            colors: [_bgGrad1, _bgGrad2, _bgGrad3],
+            stops: const [0.0, 0.5, 1.0],
           ),
         ),
         child: Stack(
           children: [
-            // ── Scrollable content ──────────────────────────────────
             CustomScrollView(
               controller: _scrollController,
               physics: const BouncingScrollPhysics(),
               slivers: [
-                // Header (scrolls away)
-                SliverToBoxAdapter(child: _buildHeader(context)),
-
-                // Banner card
-                SliverToBoxAdapter(child: _buildBannerCard()),
-
-                // Quick action chips (scrolls with content)
+                SliverToBoxAdapter(
+                  child: _buildHeader(context, topPadding, screenWidth),
+                ),
+                SliverToBoxAdapter(child: _buildBannerCard(screenWidth)),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.only(top: 16, bottom: 6),
-                    child: _buildQuickActions(),
+                    child: _buildQuickActions(context, screenWidth),
                   ),
                 ),
-
-                // Section title
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                    child: const Text(
+                    key: _subjectsSectionKey,
+                    padding: EdgeInsets.fromLTRB(
+                      _hPad(screenWidth),
+                      12,
+                      _hPad(screenWidth),
+                      12,
+                    ),
+                    child: Text(
                       'Subjects',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: _isLargeTablet(screenWidth) ? 22 : 18,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A237E),
+                        color: _titleColor,
                         fontFamily: 'GoogleSansFlex',
                         letterSpacing: -0.3,
                       ),
                     ),
                   ),
                 ),
-
-                // Subject cards grid
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 32),
+                  padding: EdgeInsets.fromLTRB(
+                    _hPad(screenWidth) - 8,
+                    0,
+                    _hPad(screenWidth) - 8,
+                    32,
+                  ),
                   sliver: SliverGrid(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 6,
-                          mainAxisSpacing: 6,
-                          childAspectRatio: 0.90,
-                        ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: gridColumns,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                      childAspectRatio: gridAspectRatio,
+                    ),
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) =>
-                          _SubjectCard(subject: _subjects[index]),
+                      (context, index) => _SubjectCard(
+                        subject: _subjects[index],
+                        isDark: _isDark,
+                        onTap: () => _navigateToSubject(
+                          context,
+                          _subjects[index]['page'] as String,
+                        ),
+                      ),
                       childCount: _subjects.length,
                     ),
                   ),
@@ -176,7 +286,6 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
 
-            // ── Sticky app bar (fades in on scroll) ────────────────
             AnimatedPositioned(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeOutCubic,
@@ -195,49 +304,58 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
-    final topPadding = MediaQuery.of(context).padding.top;
+  // -- Header ----------------------------------------------------------------
+  Widget _buildHeader(
+    BuildContext context,
+    double topPadding,
+    double screenWidth,
+  ) {
+    final hPad = _hPad(screenWidth);
+    final isLarge = _isLargeTablet(screenWidth);
+
     return Container(
-      padding: EdgeInsets.fromLTRB(20, topPadding + 6, 20, 6),
+      padding: EdgeInsets.fromLTRB(hPad, topPadding + 6, hPad, 6),
       decoration: const BoxDecoration(color: Colors.transparent),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text(
+          Text(
             'GCE Practicals',
             style: TextStyle(
-              fontSize: 26,
+              fontSize: isLarge ? 32 : 26,
               fontWeight: FontWeight.w700,
-              color: Color(0xFF1A237E),
+              color: _titleColor,
               fontFamily: 'GoogleSansFlex',
               letterSpacing: -0.5,
             ),
           ),
-          // Avatar
+          // Avatar bubble
           Container(
-            width: 42,
-            height: 42,
+            width: isLarge ? 48 : 42,
+            height: isLarge ? 48 : 42,
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF4FC3F7), Color(0xFF3949AB)],
+              gradient: LinearGradient(
+                colors: _isDark
+                    ? [const Color(0xFF738AFF), const Color(0xFF4FC3F7)]
+                    : [const Color(0xFF4FC3F7), const Color(0xFF3949AB)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF3949AB).withValues(alpha: 0.3),
+                  color: _accentColor.withValues(alpha: 0.3),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 'S',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 17,
+                  fontSize: isLarge ? 19 : 17,
                   fontWeight: FontWeight.w700,
                   fontFamily: 'GoogleSansFlex',
                 ),
@@ -249,16 +367,16 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ── Fixed sticky bar that slides in from top ──────────────────────────────
+  // -- Sticky bar ------------------------------------------------------------
   Widget _buildStickyBar(double topPadding) {
     return Container(
       padding: EdgeInsets.fromLTRB(20, topPadding + 12, 20, 12),
       decoration: BoxDecoration(
-        // App bar background = deep blue (the color of the title text below)
-        color: const Color(0xFF1A237E),
+        color: _stickyBarBg,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1A237E).withValues(alpha: 0.25),
+            color: (_isDark ? AppColors.darkBg1 : const Color(0xFF1A237E))
+                .withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -269,7 +387,6 @@ class _HomePageState extends State<HomePage> {
         children: [
           Row(
             children: [
-              // App logo
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: Image.asset(
@@ -293,20 +410,18 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(width: 10),
-              // Title color = scaffold background color
               const Text(
                 'GCE Practicals',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFFF5F6FF), // scaffold bg color as text color
+                  color: Color(0xFFF5F6FF),
                   fontFamily: 'GoogleSansFlex',
                   letterSpacing: -0.4,
                 ),
               ),
             ],
           ),
-          // Avatar stays visible
           Container(
             width: 36,
             height: 36,
@@ -339,63 +454,68 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildQuickActions() {
+  // -- Quick actions ---------------------------------------------------------
+  Widget _buildQuickActions(BuildContext context, double screenWidth) {
+    final hPad = _hPad(screenWidth);
     return SizedBox(
       height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: EdgeInsets.symmetric(horizontal: hPad),
         itemCount: _quickActions.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final action = _quickActions[index];
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-            decoration: BoxDecoration(
-              // Frosted glass: white with low opacity so gradient bleeds through
-              color: Colors.white.withValues(alpha: 0.55),
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: const Color.fromARGB(
-                  255,
-                  212,
-                  226,
-                  235,
-                ).withValues(alpha: 0.85),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF3949AB).withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
+          return GestureDetector(
+            onTap: () =>
+                _handleQuickAction(context, action['action'] as String),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+              decoration: BoxDecoration(
+                color: _isDark
+                    ? AppColors.darkCard.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.55),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: _isDark
+                      ? AppColors.darkCardBorder
+                      : Colors.white.withValues(alpha: 0.85),
+                  width: 1.2,
                 ),
-                BoxShadow(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  blurRadius: 4,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  action['icon'] as IconData,
-                  size: 16,
-                  color: const Color(0xFF3949AB),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  action['label'] as String,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF3949AB),
-                    fontFamily: 'GoogleSansFlex',
+                boxShadow: [
+                  BoxShadow(
+                    color: _accentColor.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
                   ),
-                ),
-              ],
+                  if (!_isDark)
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      blurRadius: 4,
+                      offset: const Offset(0, -1),
+                    ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    action['icon'] as IconData,
+                    size: 16,
+                    color: _accentColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    action['label'] as String,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _accentColor,
+                      fontFamily: 'GoogleSansFlex',
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -403,20 +523,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildBannerCard() {
+  // -- Banner card -----------------------------------------------------------
+  Widget _buildBannerCard(double screenWidth) {
+    final hPad = _hPad(screenWidth) - 8;
+    final isTablet = _isTablet(screenWidth);
+    final isLarge = _isLargeTablet(screenWidth);
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 20, 12, 0),
-      height: 130,
+      margin: EdgeInsets.fromLTRB(hPad, 20, hPad, 0),
+      height: isLarge
+          ? 150
+          : isTablet
+          ? 138
+          : 130,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF3949AB), Color(0xFF1565C0), Color(0xFF0288D1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 13),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3949AB).withValues(alpha: 0.35),
+            color: const Color(
+              0xFF3949AB,
+            ).withValues(alpha: _isDark ? 0.2 : 0.35),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -424,7 +555,6 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Stack(
         children: [
-          // Decorative circles
           Positioned(
             right: -20,
             top: -20,
@@ -449,12 +579,10 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          // Content
           Padding(
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                // ── Logo image replacing the school icon ──
                 ClipRRect(
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
@@ -469,7 +597,6 @@ class _HomePageState extends State<HomePage> {
                       width: 52,
                       height: 52,
                       fit: BoxFit.contain,
-                      // Fallback if image not found yet
                       errorBuilder: (_, __, ___) => const Icon(
                         Icons.school_rounded,
                         color: Colors.white,
@@ -479,12 +606,12 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'GCE Examinations 2026',
                         style: TextStyle(
                           color: Colors.white70,
@@ -493,12 +620,12 @@ class _HomePageState extends State<HomePage> {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
                         'Prepare with past practical papers & notes',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 16,
+                          fontSize: isLarge ? 18 : 16,
                           fontWeight: FontWeight.w700,
                           fontFamily: 'GoogleSansFlex',
                           letterSpacing: -0.3,
@@ -517,31 +644,46 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ── Subject Card ──────────────────────────────────────────────────────────────
+// -- Subject Card -------------------------------------------------------------
 
 class _SubjectCard extends StatelessWidget {
   final Map<String, dynamic> subject;
+  final VoidCallback onTap;
+  final bool isDark;
 
-  const _SubjectCard({required this.subject});
+  const _SubjectCard({
+    required this.subject,
+    required this.onTap,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
     final gradientColors = subject['gradient'] as List<Color>;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isLarge = screenWidth >= 800;
+    final isTablet = screenWidth >= 600;
+
+    // Card background adapts for dark mode
+    final Color cardBg = isDark ? AppColors.darkCard : Colors.white;
+    final Color titleTextColor = isDark
+        ? AppColors.darkTitle
+        : const Color(0xFF1A237E);
 
     return GestureDetector(
-      onTap: () {},
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
+          color: cardBg,
+          borderRadius: BorderRadius.circular(isTablet ? 14 : 10),
           boxShadow: [
             BoxShadow(
-              color: gradientColors[1].withValues(alpha: 0.15),
+              color: gradientColors[1].withValues(alpha: isDark ? 0.08 : 0.15),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -550,9 +692,13 @@ class _SubjectCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Gradient icon area
+            // Coloured top gradient area with icon
             Container(
-              height: 110,
+              height: isLarge
+                  ? 130
+                  : isTablet
+                  ? 120
+                  : 110,
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -560,8 +706,8 @@ class _SubjectCard extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(10),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(isTablet ? 14 : 10),
                 ),
               ),
               child: Stack(
@@ -582,17 +728,25 @@ class _SubjectCard extends StatelessWidget {
                     child: Icon(
                       subject['icon'] as IconData,
                       color: Colors.white,
-                      size: 40,
+                      size: isLarge
+                          ? 48
+                          : isTablet
+                          ? 44
+                          : 40,
                     ),
                   ),
                 ],
               ),
             ),
-
-            // Text area
+            // Text area — dark/light adaptive
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+                padding: EdgeInsets.fromLTRB(
+                  isTablet ? 14 : 12,
+                  isTablet ? 12 : 10,
+                  isTablet ? 14 : 12,
+                  14,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -601,10 +755,14 @@ class _SubjectCard extends StatelessWidget {
                       subject['title'] as String,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: TextStyle(
+                        fontSize: isLarge
+                            ? 15
+                            : isTablet
+                            ? 14
+                            : 13,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A237E),
+                        color: titleTextColor,
                         fontFamily: 'GoogleSansFlex',
                         letterSpacing: -0.2,
                         height: 1.3,
@@ -616,15 +774,17 @@ class _SubjectCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: gradientColors[0].withValues(alpha: 0.12),
+                        color: gradientColors[0].withValues(
+                          alpha: isDark ? 0.18 : 0.12,
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         subject['tag'] as String,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: isTablet ? 11 : 10,
                           fontWeight: FontWeight.w600,
-                          color: gradientColors[1],
+                          color: isDark ? gradientColors[0] : gradientColors[1],
                           fontFamily: 'GoogleSansFlex',
                         ),
                       ),

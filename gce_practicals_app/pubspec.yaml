@@ -56,6 +56,13 @@ flutter:
 
   assets:
     - assets/images/practicals_logo.png
+    - assets/images/coin.png
+    - assets/images/Ict.png
+    - assets/images/Computer.png
+    - assets/images/Csc.png
+    - assets/images/Biology.png
+    - assets/images/Chemistry.png
+    - assets/images/Physics.png
 
   fonts:
   - family: GoogleSansFlex

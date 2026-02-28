@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gce_practicals_app/pages/Profile/profile_page.dart';
+
+// Import your themeNotifier and AppColors from your shared file, e.g.:
+// import 'theme_notifier.dart';
 
 class CustomNavBar extends StatefulWidget {
   final int currentIndex;
@@ -21,16 +25,6 @@ class _CustomNavBarState extends State<CustomNavBar>
   late Animation<double> _slideAnimation;
   int _previousIndex = 0;
 
-  // App color palette
-  static const Color _activeColor = Color(0xFF1A237E); // Deep blue
-  static const Color _inactiveColor = Color.fromARGB(
-    255,
-    88,
-    91,
-    94,
-  ); // Soft grey, works great on white
-  final Color _pillColor = Colors.blue.shade300.withValues(alpha: 0.2);
-
   final List<_NavItem> _items = const [
     _NavItem(
       icon: Icons.home_rounded,
@@ -43,9 +37,9 @@ class _CustomNavBarState extends State<CustomNavBar>
       label: 'Papers',
     ),
     _NavItem(
-      icon: Icons.settings_rounded,
-      outlinedIcon: Icons.settings_outlined,
-      label: 'Settings',
+      icon: Icons.person_rounded,
+      outlinedIcon: Icons.person_outline_rounded,
+      label: 'Profile',
     ),
   ];
 
@@ -64,7 +58,10 @@ class _CustomNavBarState extends State<CustomNavBar>
         ).animate(
           CurvedAnimation(parent: _controller, curve: Curves.easeInOutCubic),
         );
+    themeNotifier.addListener(_onThemeChange);
   }
+
+  void _onThemeChange() => setState(() {});
 
   @override
   void didUpdateWidget(CustomNavBar oldWidget) {
@@ -85,6 +82,7 @@ class _CustomNavBarState extends State<CustomNavBar>
   @override
   void dispose() {
     _controller.dispose();
+    themeNotifier.removeListener(_onThemeChange);
     super.dispose();
   }
 
@@ -93,35 +91,62 @@ class _CustomNavBarState extends State<CustomNavBar>
     widget.onTap(index);
   }
 
+  bool get _isDark => themeNotifier.value == ThemeMode.dark;
+
+  // Colour tokens
+  static const Color _activeColorLight = Color(0xFF1A237E);
+  static const Color _inactiveColorLight = Color(0xFF5A5D62);
+  static const Color _activeColorDark = Color(0xFF738AFF);
+  static const Color _inactiveColorDark = Color(0xFF5A6380);
+
+  Color get _activeColor => _isDark ? _activeColorDark : _activeColorLight;
+  Color get _inactiveColor =>
+      _isDark ? _inactiveColorDark : _inactiveColorLight;
+
+  Color get _pillColor => _isDark
+      ? const Color(0xFF4FC3F7).withValues(alpha: 0.15)
+      : Colors.blue.shade300.withValues(alpha: 0.2);
+
+  List<Color> get _bgGradient => _isDark
+      ? [
+          const Color(0xFF131629).withValues(alpha: 0.95),
+          const Color(0xFF0D0F1E).withValues(alpha: 0.98),
+        ]
+      : [
+          Colors.white.withValues(alpha: 0.85),
+          Colors.white.withValues(alpha: 0.97),
+        ];
+
+  Color get _borderColor => _isDark
+      ? const Color(0xFF252845).withValues(alpha: 0.8)
+      : const Color(0xFF3949AB).withValues(alpha: 0.15);
+
+  Color get _shadowColor => _isDark
+      ? const Color(0xFF0D0F1E).withValues(alpha: 0.5)
+      : const Color(0xFF3949AB).withValues(alpha: 0.06);
+
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
       decoration: BoxDecoration(
-        // Liquid glass white effect
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Colors.white.withValues(alpha: 0.85),
-            Colors.white.withValues(alpha: 0.97),
-          ],
+          colors: _bgGradient,
         ),
-        border: Border(
-          top: BorderSide(
-            color: const Color(0xFF3949AB).withValues(alpha: 0.15),
-            width: 1.2,
-          ),
-        ),
+        border: Border(top: BorderSide(color: _borderColor, width: 1.2)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3949AB).withValues(alpha: 0.06),
+            color: _shadowColor,
             blurRadius: 20,
             offset: const Offset(0, -4),
           ),
           BoxShadow(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: _isDark
+                ? const Color(0xFF131629).withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.9),
             blurRadius: 10,
             offset: const Offset(0, -1),
           ),
@@ -134,17 +159,17 @@ class _CustomNavBarState extends State<CustomNavBar>
             0,
             0,
             0,
-            8,
+            _isDark ? 0 : 8,
             0,
             1,
             0,
             0,
-            8,
+            _isDark ? 0 : 8,
             0,
             0,
             1,
             0,
-            12,
+            _isDark ? 0 : 12,
             0,
             0,
             0,
@@ -171,7 +196,6 @@ class _CustomNavBarState extends State<CustomNavBar>
                         builder: (context, _) {
                           final pillCenterX =
                               _slideAnimation.value * itemWidth + itemWidth / 2;
-
                           return Positioned(
                             left: pillCenterX - 35,
                             top: 2,
@@ -209,16 +233,10 @@ class _CustomNavBarState extends State<CustomNavBar>
                                       size: 24,
                                       color: isSelected
                                           ? _activeColor
-                                          : const Color.fromARGB(
-                                              255,
-                                              106,
-                                              109,
-                                              113,
-                                            ),
+                                          : _inactiveColor,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
-                                  // No animation on text — plain Text widget
                                   Text(
                                     _items[index].label,
                                     style: TextStyle(
