@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gce_practicals_app/pages/Profile/profile_page.dart';
+import 'package:gce_practicals_app/pages/Papers/subject_papers_page.dart';
 
 // ── Import your themeNotifier and AppColors from wherever you placed them ─────
 // e.g. import 'theme_notifier.dart';
@@ -519,7 +520,11 @@ class _PaperCard extends StatelessWidget {
     final double shadowAlpha = isDark ? 0.18 : 0.30;
 
     return GestureDetector(
-      onTap: () {},
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => SubjectPapersPage(subject: paper)),
+        );
+      },
       child: Container(
         margin: EdgeInsets.only(bottom: isTablet ? 18 : 14),
         height: cardHeight,
